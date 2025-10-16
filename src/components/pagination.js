@@ -1,60 +1,73 @@
-import { getPages } from "../lib/utils.js";
+import { calculatePageRange } from "../lib/utils.js";
 
-export const initPagination = (
+/**
+ * Инициализация системы пагинации
+ */
+export const setupPagination = (
     { pages, fromRow, toRow, totalRows },
-    createPage
+    renderPageElement
 ) => {
-    const pageTemplate = pages.firstElementChild.cloneNode(true);
+    const pageElementTemplate = pages.firstElementChild.cloneNode(true);
     pages.firstElementChild.remove();
 
-    let pageCount;
+    let totalPageCount;
 
-    const applyPagination = (query, state, action) => {
-        const limit = state.rowsPerPage;
-        let page = state.page;
+    /**
+     * Применение параметров пагинации к запросу
+     */
+    const applyPaginationLogic = (query, state, action) => {
+        const pageSize = state.rowsPerPage;
+        let currentPage = state.page;
 
-        if (action)
+        // Обработка действий пагинации
+        if (action) {
             switch (action.name) {
                 case "prev":
-                    page = Math.max(1, page - 1);
-                    break; // переход на предыдущую страницу
+                    currentPage = Math.max(1, currentPage - 1);
+                    break;
                 case "next":
-                    page = Math.min(pageCount, page + 1);
-                    break; // переход на следующую страницу
+                    currentPage = Math.min(totalPageCount, currentPage + 1);
+                    break;
                 case "first":
-                    page = 1;
-                    break; // переход на первую страницу
+                    currentPage = 1;
+                    break;
                 case "last":
-                    page = pageCount;
-                    break; // переход на последнюю страницу
+                    currentPage = totalPageCount;
+                    break;
             }
+        }
 
         return Object.assign({}, query, {
-            // добавим параметры к query, но не изменяем исходный объект
-            limit,
-            page,
+            limit: pageSize,
+            page: currentPage,
         });
     };
 
-    const updatePagination = (total, { page, limit }) => {
-        pageCount = Math.ceil(total / limit);
+    /**
+     * Обновление отображения пагинации
+     */
+    const refreshPagination = (totalItems, { page, limit }) => {
+        totalPageCount = Math.ceil(totalItems / limit);
 
-        const visiblePages = getPages(page, pageCount, 5); // Получим массив страниц, которые нужно показать, выводим только 5 страниц
+        // Расчет диапазона отображаемых страниц
+        const visiblePages = calculatePageRange(page, totalPageCount, 5);
+
+        // Обновление элементов пагинации
         pages.replaceChildren(
             ...visiblePages.map((pageNumber) => {
-                // перебираем их и создаём для них кнопку
-                const el = pageTemplate.cloneNode(true); // клонируем шаблон, который запомнили ранее
-                return createPage(el, pageNumber, pageNumber === page); // вызываем колбэк из настроек, чтобы заполнить кнопку данными
+                const pageElement = pageElementTemplate.cloneNode(true);
+                return renderPageElement(pageElement, pageNumber, pageNumber === page);
             })
         );
 
+        // Обновление информации о записях
         fromRow.textContent = (page - 1) * limit;
-        toRow.textContent = (page + 1) * limit;
-        totalRows.textContent = total;
+        toRow.textContent = Math.min(page * limit, totalItems);
+        totalRows.textContent = totalItems;
     };
 
     return {
-        updatePagination,
-        applyPagination,
+        updatePagination: refreshPagination,
+        applyPagination: applyPaginationLogic,
     };
 };

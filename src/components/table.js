@@ -1,49 +1,53 @@
 import { cloneTemplate } from "../lib/utils.js";
 
 /**
- * Инициализирует таблицу и вызывает коллбэк при любых изменениях и нажатиях на кнопки
- *
- * @param {Object} settings
- * @param {(action: HTMLButtonElement | undefined) => void} onAction
- * @returns {{container: Node, elements: *, render: render}}
+ * Инициализация компонента таблицы
  */
-export function initTable(settings, onAction) {
-    const { tableTemplate, rowTemplate, before, after } = settings;
-    const root = cloneTemplate(tableTemplate);
+export function initializeTableComponent(config, actionHandler) {
+    const { tableTemplate, rowTemplate, prependElements, appendElements } = config;
+    const tableRoot = cloneTemplate(tableTemplate);
 
-    after.forEach((subName) => {
-        // перебираем нужный массив идентификаторов
-        root[subName] = cloneTemplate(subName); // клонируем и получаем объект, сохраняем в таблице
-        root.container.append(root[subName].container); // добавляем к таблице после (append) или до (prepend)
-    });
-
-    before.reverse().forEach((subName) => {
-        root[subName] = cloneTemplate(subName);
-        root.container.prepend(root[subName].container);
+    // Добавление элементов после таблицы
+    appendElements.forEach((templateName) => {
+        tableRoot[templateName] = cloneTemplate(templateName);
+        tableRoot.container.append(tableRoot[templateName].container);
     });
 
-    // @todo: #1.2 —  вывести дополнительные шаблоны до и после таблицы
-    root.container.addEventListener("change", () => {
-        onAction();
-    });
-    root.container.addEventListener("reset", () => {
-        setTimeout(onAction);
-    });
-    root.container.addEventListener("submit", (e) => {
-        e.preventDefault();
-        onAction(e.submitter);
+    // Добавление элементов перед таблицей
+    prependElements.reverse().forEach((templateName) => {
+        tableRoot[templateName] = cloneTemplate(templateName);
+        tableRoot.container.prepend(tableRoot[templateName].container);
     });
 
-    const render = (data) => {
-        const nextRows = data.map((item) => {
+    // Обработчики событий таблицы
+    tableRoot.container.addEventListener("change", () => {
+        actionHandler();
+    });
+
+    tableRoot.container.addEventListener("reset", () => {
+        setTimeout(actionHandler);
+    });
+
+    tableRoot.container.addEventListener("submit", (event) => {
+        event.preventDefault();
+        actionHandler(event.submitter);
+    });
+
+    /**
+     * Рендеринг данных таблицы
+     */
+    const renderTableData = (data) => {
+        const tableRows = data.map((item) => {
             const row = cloneTemplate(rowTemplate);
 
+            // Заполнение ячеек данными
             Object.keys(item).forEach((key) => {
                 if (row.elements[key]) {
-                    if (["INPUT", "SELECT"].includes(row.elements[key].tagName)) {
-                        row.elements[key].value = item[key];
+                    const element = row.elements[key];
+                    if (["INPUT", "SELECT"].includes(element.tagName)) {
+                        element.value = item[key];
                     } else {
-                        row.elements[key].textContent = item[key];
+                        element.textContent = item[key];
                     }
                 }
             });
@@ -51,8 +55,8 @@ export function initTable(settings, onAction) {
             return row.container;
         });
 
-        root.elements.rows.replaceChildren(...nextRows);
+        tableRoot.elements.rows.replaceChildren(...tableRows);
     };
 
-    return { ...root, render };
+    return { ...tableRoot, render: renderTableData };
 }

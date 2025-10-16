@@ -1,11 +1,12 @@
-export function initSearching(searchField) {
+/**
+ * Инициализация системы поиска
+ */
+export function setupSearch(searchFieldName) {
     return (query, state, action) => {
-        // result заменили на query
-        return state[searchField]
+        return state[searchFieldName]
             ? Object.assign({}, query, {
-                // проверяем, что в поле поиска было что-то введено
-                search: state[searchField], // устанавливаем в query параметр
+                search: state[searchFieldName],
             })
-            : query; // если поле с поиском пустое, просто возвращаем query без изменений
+            : query;
     };
 }

@@ -1,42 +1,52 @@
-export function initFiltering(elements) {
-    const updateIndexes = (elements, indexes) => {
-        Object.keys(indexes).forEach((elementName) => {
-            elements[elementName].append(
-                ...Object.values(indexes[elementName]).map((name) => {
-                    const el = document.createElement("option");
-                    el.textContent = name;
-                    el.value = name;
-                    return el;
+/**
+ * Инициализация системы фильтрации
+ */
+export function setupFiltering(uiElements) {
+    /**
+     * Обновление опций фильтров на основе справочных данных
+     */
+    const refreshFilterIndexes = (elements, indexData) => {
+        Object.keys(indexData).forEach((elementKey) => {
+            elements[elementKey].append(
+                ...Object.values(indexData[elementKey]).map((optionText) => {
+                    const optionElement = document.createElement("option");
+                    optionElement.textContent = optionText;
+                    optionElement.value = optionText;
+                    return optionElement;
                 })
             );
         });
     };
 
-    const applyFiltering = (query, state, action) => {
+    /**
+     * Применение фильтров к запросу
+     */
+    const applyFilteringLogic = (query, state, action) => {
+        // Обработка очистки фильтра
         if (action && action.name === "clear") {
-            const input = action.parentElement.querySelector("input");
-            input.value = "";
+            const inputField = action.parentElement.querySelector("input");
+            inputField.value = "";
             state[action.dataset.field] = "";
         }
-        const filter = {};
-        Object.keys(elements).forEach((key) => {
-            if (elements[key]) {
-                if (
-                    ["INPUT", "SELECT"].includes(elements[key].tagName) &&
-                    elements[key].value
-                ) {
-                    filter[`filter[${elements[key].name}]`] = elements[key].value;
-                }
+
+        const activeFilters = {};
+
+        // Сбор активных фильтров из формы
+        Object.keys(uiElements).forEach((key) => {
+            const element = uiElements[key];
+            if (element && ["INPUT", "SELECT"].includes(element.tagName) && element.value) {
+                activeFilters[`filter[${element.name}]`] = element.value;
             }
         });
 
-        return Object.keys(filter).length
-            ? Object.assign({}, query, filter)
+        // Возвращаем обновленный запрос
+        return Object.keys(activeFilters).length
+            ? Object.assign({}, query, activeFilters)
             : query;
     };
 
     return {
-        updateIndexes,
-        applyFiltering,
+        updateIndexes: refreshFilterIndexes,
+        applyFiltering: applyFilteringLogic,
     };
 }
